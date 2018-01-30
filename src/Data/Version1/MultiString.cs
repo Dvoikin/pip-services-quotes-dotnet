@@ -1,78 +1,32 @@
-﻿
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Collections.Generic;
 
 namespace PipServices.Quotes.Data.Version1
 {
-    // TODO: Move to Pip.Services.Common
-    public class MultiString : List<KeyValuePair<string, string>>, IEnumerable<KeyValuePair<string, string>>
+    public class MultiString: Dictionary<string, string>
     {
         public const string English = "en";
         public const string Spanish = "sp";
         public const string French = "fr";
         public const string German = "de";
         public const string Russian = "ru";
+        public const string Portuguese = "pt";
+        public const string Italian = "it";
+        public const string Japanese = "jp";
+        public const string Chinese = "ch";
 
-        public MultiString()
+        public string Get(string language)
         {
+            string value = null;
+            if (TryGetValue(language, out value))
+                return value;
+            if (language != English && TryGetValue(English, out value))
+                return value;
+            return null;
         }
 
-        public MultiString(Dictionary<string, string> map)
+        public void Put(string language, string value)
         {
-            foreach (string key in map.Keys)
-            {
-                Add(new KeyValuePair<string, string>(key, map[key]));
-            }
+            this[language] = value;
         }
-
-        public MultiString(IEnumerable<KeyValuePair<string, string>> map)
-            : base(map)
-        {
-        }
-
-        public MultiString(string text)
-            : this(English, text)
-        {
-        }
-
-        public MultiString(string language, string text)
-        {
-            this.Add(new KeyValuePair<string, string>(language,text));
-        }
-
-        public override bool Equals(object obj)
-        {
-            var multiString = obj as MultiString;
-
-            return multiString != null &&
-                multiString.Count == Count &&
-                !multiString.Except(this).Any();
-        }
-
-        public override int GetHashCode()
-        {
-            return base.GetHashCode();
-        }
-
-        public bool Contains(string search)
-        {
-            foreach (var kv in this)
-            {
-                if (Contains(kv.Value.ToString(), search))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        private bool Contains(string value, string search)
-        {
-            return (string.IsNullOrWhiteSpace(value) && string.IsNullOrWhiteSpace(search)) ? true 
-                : (string.IsNullOrWhiteSpace(value) || string.IsNullOrWhiteSpace(search)) ? false 
-                : value.ToLower().IndexOf(search.ToLower()) >= 0;
-        }
-
     }
 }

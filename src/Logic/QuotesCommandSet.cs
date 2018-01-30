@@ -72,7 +72,7 @@ namespace PipServices.Quotes.Logic
                     .WithRequiredProperty("quote", new QuoteV1Schema()),
                 async (correlation_id, parameters) =>
                 {
-                    var quote = ExtractQuote(parameters);
+                    var quote = ConvertToQuote(parameters.Get("quote"));
                     return await _logic.CreateQuoteAsync(correlation_id, quote);
                 });
         }
@@ -85,7 +85,7 @@ namespace PipServices.Quotes.Logic
                     .WithRequiredProperty("quote", new QuoteV1Schema()),
                 async (correlationId, parameters) =>
                 {
-                    var quote = ExtractQuote(parameters);
+                    var quote = ConvertToQuote(parameters.Get("quote"));
                     return await _logic.UpdateQuoteAsync(correlationId, quote);
                 });
         }
@@ -103,23 +103,29 @@ namespace PipServices.Quotes.Logic
                 });
         }
 
-        private static QuoteV1 ExtractQuote(Parameters args)
+        private static QuoteV1 ConvertToQuote(object value)
         {
-            var map = args.GetAsMap("quote");
-
-            return ExtractQuote(map);
+            var json = JsonConverter.ToJson(value);
+            return JsonConverter.FromJson<QuoteV1>(json);
         }
 
-        private static QuoteV1 ExtractQuote(AnyValueMap map)
-        {
-            var id = map.GetAsStringWithDefault("id", string.Empty);
-            var text = map.Get("text");
-            var author = map.Get("author");
-            var status = map.GetAsStringWithDefault("status", string.Empty);
-            var tags = map.GetAsArrayWithDefault("tags", null);
-            var all_tags = map.GetAsArrayWithDefault("all_tags", null);
+        //private static QuoteV1 ExtractQuote(Parameters args)
+        //{
+        //    var map = args.GetAsMap("quote");
 
-            return new QuoteV1(id, text, author, status);
-        }
+        //    return ExtractQuote(map);
+        //}
+
+        //private static QuoteV1 ExtractQuote(AnyValueMap map)
+        //{
+        //    var id = map.GetAsStringWithDefault("id", string.Empty);
+        //    var text = map.Get("text");
+        //    var author = map.Get("author");
+        //    var status = map.GetAsStringWithDefault("status", string.Empty);
+        //    var tags = map.GetAsArrayWithDefault("tags", null);
+        //    var all_tags = map.GetAsArrayWithDefault("all_tags", null);
+
+        //    return new QuoteV1(id, text, author, status);
+        //}
     }
 }

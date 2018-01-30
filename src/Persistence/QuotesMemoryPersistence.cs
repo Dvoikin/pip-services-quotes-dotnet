@@ -10,16 +10,22 @@ namespace PipServices.Quotes.Persistence
 {
     public class QuotesMemoryPersistence : IdentifiableMemoryPersistence<QuoteV1, string>, IQuotesPersistence
     {
-        public int ItemsCount { get { return _items.Count; } }
-
-        public Task<QuoteV1> GetOneRandomAsync(string correlationId, FilterParams filterParams)
+        private bool MatchMultiString(MultiString value, string search)
         {
-            return base.GetOneRandomAsync(correlationId, ComposeFilter(filterParams));
+            foreach (var item in value.Values)
+            {
+                if (item != null && item.Contains(search))
+                    return true;
+            }
+            return false;
         }
 
-        public Task<DataPage<QuoteV1>> GetPageByFilterAsync(string correlationId, FilterParams filterParams, PagingParams paging)
+        private bool MatchSearch(QuoteV1 item, string search)
         {
-            return base.GetPageByFilterAsync(correlationId, ComposeFilter(filterParams), paging);
+            return (item.Text != null && MatchMultiString(item.Text, search)) ? true
+                : (item.Author != null && MatchMultiString(item.Author, search)) ? true
+                : (item.Status != null && item.Status.Equals(search, StringComparison.InvariantCultureIgnoreCase)) ? true
+                : false;
         }
 
         private IList<Func<QuoteV1, bool>> ComposeFilter(FilterParams filter)
@@ -36,17 +42,19 @@ namespace PipServices.Quotes.Persistence
             result.Add(quote => string.IsNullOrWhiteSpace(search) || MatchSearch(quote, search));
             result.Add(quote => string.IsNullOrWhiteSpace(id) || quote.Id.Equals(id));
             result.Add(quote => string.IsNullOrWhiteSpace(status) || quote.Status.Equals(status));
-            result.Add(quote => string.IsNullOrWhiteSpace(author) || quote.Author.Contains(author));
+            result.Add(quote => string.IsNullOrWhiteSpace(author) || MatchMultiString(quote.Author, author));
 
             return result;
         }
 
-        private bool MatchSearch(QuoteV1 item, string search)
+        public Task<DataPage<QuoteV1>> GetPageByFilterAsync(string correlationId, FilterParams filterParams, PagingParams paging)
         {
-            return (item.Text != null && item.Text.Contains(search)) ? true
-                : (item.Author != null && item.Author.Contains(search)) ? true
-                : (item.Status != null && item.Status.Contains(search)) ? true
-                : false;
+            return base.GetPageByFilterAsync(correlationId, ComposeFilter(filterParams), paging);
+        }
+
+        public Task<QuoteV1> GetOneRandomAsync(string correlationId, FilterParams filterParams)
+        {
+            return base.GetOneRandomAsync(correlationId, ComposeFilter(filterParams));
         }
     }
 }

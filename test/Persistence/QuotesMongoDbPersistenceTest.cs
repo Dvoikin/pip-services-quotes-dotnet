@@ -1,155 +1,48 @@
-﻿using Xunit;
-
-using PipServices.Commons.Data;
-using PipServices.Quotes.Data.Version1;
-using PipServices.Commons.Config;
+﻿using PipServices.Commons.Config;
 using System;
+using System.Threading.Tasks;
+using Xunit;
 
 namespace PipServices.Quotes.Persistence
 {
-    public class QuotesMongoDbPersistenceTest : AbstractTest
+    public class QuotesMongoDbPersistenceTest: IDisposable
     {
-        private TestModel Model { get; set; }
-        private QuotesMongoDbPersistence quotesPersistence;
+        private QuotesMongoDbPersistence _persistence;
+        private QuotesPersistenceFixture _fixture;
 
         public QuotesMongoDbPersistenceTest()
         {
-        }
+            var MONGODB_COLLECTION = Environment.GetEnvironmentVariable("MONGODB_COLLECTION") ?? "test_quotes";
+            var MONGODB_SERVICE_URI = Environment.GetEnvironmentVariable("MONGODB_SERVICE_URI") ?? "mongodb://localhost:27017/test";
 
-        protected override void Initialize()
-        {
-            Model = new TestModel();
-
-            //var config = YamlConfigReader.ReadConfig(null, "./config/test_connections.yaml", null);
-            //var dbConfig = config.GetSection("mongodb");
-
-            var mongoUri = Environment.GetEnvironmentVariable("MONGO_URI");
-            var mongoHost = Environment.GetEnvironmentVariable("MONGO_HOST") ?? "localhost";
-            var mongoPort = Environment.GetEnvironmentVariable("MONGO_PORT") ?? "27017";
-            var mongoDatabase = Environment.GetEnvironmentVariable("MONGO_DB") ?? "test";
-
-            if (mongoUri == null && mongoHost == null)
-                return;
-
-            var dbConfig = ConfigParams.FromTuples(
-                "connection.uri", mongoUri,
-                "connection.host", mongoHost,
-                "connection.port", mongoPort,
-                "connection.database", mongoDatabase
+            var config = ConfigParams.FromTuples(
+                "collection", MONGODB_COLLECTION,
+                "connection.uri", MONGODB_SERVICE_URI
             );
 
-            quotesPersistence = new QuotesMongoDbPersistence();
-            quotesPersistence.Configure(dbConfig);
+            _persistence = new QuotesMongoDbPersistence();
+            _persistence.Configure(config);
+            _persistence.OpenAsync(null).Wait();
+            _persistence.ClearAsync(null).Wait();
 
-            quotesPersistence.OpenAsync(null).Wait();
-            quotesPersistence.ClearAsync(null).Wait();
+            _fixture = new QuotesPersistenceFixture(_persistence);
         }
 
-        protected override void Uninitialize()
+        public void Dispose()
         {
-        }
-
-        [Fact]
-        public void It_Should_Clear_Async()
-        {
-            quotesPersistence.CreateAsync(Model.CorrelationId, Model.SampleQuote1).Wait();
-            var quote = quotesPersistence.GetOneByIdAsync(Model.CorrelationId, Model.SampleQuote1.Id).Result;
-            Assert.Equal(Model.SampleQuote1, quote);
-
-            quotesPersistence.ClearAsync(Model.CorrelationId).Wait();
-            quote = quotesPersistence.GetOneByIdAsync(Model.CorrelationId, Model.SampleQuote1.Id).Result;
-            Assert.Null(quote);
+            _persistence.CloseAsync(null).Wait();
         }
 
         [Fact]
-        public void It_Should_Create_Async()
+        public async Task TestMongoDbCrudOperationsAsync()
         {
-            quotesPersistence.CreateAsync(Model.CorrelationId, Model.SampleQuote1).Wait();
-            var quote = quotesPersistence.GetOneByIdAsync(Model.CorrelationId, Model.SampleQuote1.Id).Result;
-            Assert.Equal(Model.SampleQuote1, quote);
+            await _fixture.TestCrudOperationsAsync();
         }
 
         [Fact]
-        public void It_Should_Get_Page_Async_By_Search_Filter()
+        public async Task TestMemoryGetByFilterAsync()
         {
-            var filter = new FilterParams
-            {
-                { "search", "test" }
-            };
-
-            CreateTestQuotes(quotesPersistence);
-
-            var result = quotesPersistence.GetPageByFilterAsync(Model.CorrelationId, filter, null).Result;
-
-            Assert.Equal(4, result.Data.Count);
-        }
-
-        [Fact]
-        public void It_Should_Get_Page_Async_By_Author_Filter()
-        {
-            var filter = new FilterParams
-            {
-                { "author", "Author Strange" }
-            };
-
-            CreateTestQuotes(quotesPersistence);
-
-            var result = quotesPersistence.GetPageByFilterAsync(Model.CorrelationId, filter, null).Result;
-
-            Assert.Equal(1, result.Data.Count);
-        }
-
-        [Fact]
-        public void It_Should_Get_Page_Async_By_Status_Filter()
-        {
-            var filter = new FilterParams
-            {
-                { "status", QuoteStatusV1.New }
-            };
-
-            CreateTestQuotes(quotesPersistence);
-
-            var result = quotesPersistence.GetPageByFilterAsync(Model.CorrelationId, filter, null).Result;
-
-            Assert.Equal(2, result.Data.Count);
-        }
-
-        [Fact]
-        public void It_Should_Get_Page_Async_By_Search_Filter_For_Another_Language()
-        {
-            var filter = new FilterParams
-            {
-                { "search", "citar" }
-            };
-
-            CreateTestQuotes(quotesPersistence);
-
-            var result = quotesPersistence.GetPageByFilterAsync(Model.CorrelationId, filter, null).Result;
-
-            Assert.Equal(1, result.Data.Count);
-        }
-
-        [Fact]
-        public void It_Should_Get_Page_Async_By_Null_Search_Filter()
-        {
-            var filter = new FilterParams
-            {
-                { "search", string.Empty }
-            };
-
-            CreateTestQuotes(quotesPersistence);
-
-            var result = quotesPersistence.GetPageByFilterAsync(Model.CorrelationId, filter, null).Result;
-
-            Assert.Equal(4, result.Data.Count);
-        }
-
-        private void CreateTestQuotes(IQuotesPersistence quotesPersistence)
-        {
-            quotesPersistence.CreateAsync(Model.CorrelationId, Model.SampleQuote1).Wait();
-            quotesPersistence.CreateAsync(Model.CorrelationId, Model.SampleQuote2).Wait();
-            quotesPersistence.CreateAsync(Model.CorrelationId, Model.SampleQuote3).Wait();
-            quotesPersistence.CreateAsync(Model.CorrelationId, Model.SampleQuote4).Wait();
+            await _fixture.TestGetByFilterAsync();
         }
     }
 }

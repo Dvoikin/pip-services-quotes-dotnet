@@ -1,61 +1,27 @@
 ﻿using PipServices.Commons.Data;
-
-using System.Collections.Generic;
+using System.Runtime.Serialization;
 
 namespace PipServices.Quotes.Data.Version1
 {
+    [DataContract]
     public class QuoteV1 : IStringIdentifiable
     {
+        [DataMember(Name = "id")]
         public string Id { get; set; }
+
+        [DataMember(Name = "text")]
         public MultiString Text { get; set; }
+
+        [DataMember(Name = "author")]
         public MultiString Author { get; set; }
+
+        [DataMember(Name = "status")]
         public string Status { get; set; }
+
+        [DataMember(Name = "tags")]
         public string[] Tags { get; set; }
-        public string[] All_Tags { get; set; }
 
-        public QuoteV1()
-        {
-        }
-
-        public QuoteV1(string id, object text, object author, string status = "", string[] tags = null, string[] allTags = null)
-        {
-            Id = !string.IsNullOrWhiteSpace(id) ? id : IdGenerator.NextLong();
-            Text = ExtractMultiString(text);
-            Author = ExtractMultiString(author);
-            Status = !string.IsNullOrWhiteSpace(status) ? status : QuoteStatusV1.New;
-            Tags = tags ?? new string[] { };
-            All_Tags = allTags ?? new string[] { };
-        }
-
-        public override bool Equals(object obj)
-        {
-            var quote = obj as QuoteV1;
-
-            return quote != null &&
-                quote.Id.Equals(Id) &&
-                quote.Text.Equals(Text) &&
-                quote.Author.Equals(Author) &&
-                quote.Status.Equals(Status);
-        }
-
-        public override int GetHashCode()
-        {
-            return base.GetHashCode();
-        }
-
-        private MultiString ExtractMultiString(object obj)
-        {
-            if (obj is MultiString)
-            {
-                return obj as MultiString;
-            }
-
-            if (obj is string)
-            {
-                return new MultiString(obj as string);
-            }
-
-            return new MultiString(obj as Dictionary<string, string>);
-        }
+        [DataMember(Name = "all_tags")]
+        public string[] AllTags { get; set; }
     }
 }
